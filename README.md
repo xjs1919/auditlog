@@ -1,6 +1,13 @@
 # auditlog
 用户操作记录审计
 
+## 实现原理
+
+- 1.使用aop拦截所有的RequestMapping，根据是否添加相关注解决定是否记录审计日志
+- 2.拦截到日志以后，调用服务端的http接口，把日志上传到服务端
+- 3.服务端接口收到数据以后，把数据写入kafka
+- 4.服务端的kafka消费者收到数据以后，把数据写入到mongodb
+
 ## demo演示
 - 1.创建数据库导入数据
 [数据库sql](https://github.com/xjs1919/auditlog/blob/master/audit-log-demo/demo.sql)
