@@ -1,0 +1,24 @@
+#datasource
+spring:
+  kafka:
+    bootstrap-servers: "192.168.1.26:9099"
+    audit-topic: topic_audit
+    producer:
+      retries: 0
+      acks: 1
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: action-audit-admin
+      enable-auto-commit: true
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  data:
+    mongodb:
+      uri: "mongodb://192.168.1.25:27017/action_audit"
+      min-connections-per-host: 5
+      max-connections-per-host: 10
+      max-wait-time: 3000
+      connect-timeout: 1000
+      socket-timeout: 3000

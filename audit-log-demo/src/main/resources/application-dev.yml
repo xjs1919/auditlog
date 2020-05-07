@@ -1,0 +1,14 @@
+#datasource
+spring:
+  datasource:
+    driver-class-name: com.mysql.jdbc.Driver
+    url: jdbc:mysql://192.168.1.25:3306/demo?allowMultiQueries=true&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+
+audit:
+  enable: true
+  appKey: 111111
+  uploadUrl: http://localhost:8084/api/upload_audit
+  uploadFallBackFile: /tmp/action_audit.log
+
