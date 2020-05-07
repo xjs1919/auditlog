@@ -26,7 +26,15 @@
     <version>1.0.0</version>
 </dependency>
 ```
-- 3.在需要审计的controller上添加注解
+- 3.注入IAuditUserService
+```java
+//举个例子
+@Bean
+public IAuditUserService auditUserService() {
+    return new DemoAuditUserService();
+}
+```
+- 4.在需要审计的controller上添加注解
 比如：
 ```java
 @AuditApi(desc="用户登录", isLogin = true, isLogResponse = true)
