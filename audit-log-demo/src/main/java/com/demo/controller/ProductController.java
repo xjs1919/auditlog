@@ -25,9 +25,6 @@ public class ProductController {
     @Autowired
     ProductService prodService;
 
-    @Autowired
-    private IAuditLogService logService;
-
     @GetMapping("/info")
     public ResVo info(@Valid Long id){
         Product product = prodService.getById(id);

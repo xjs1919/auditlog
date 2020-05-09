@@ -7,7 +7,6 @@ package com.github.xjs.auditlog.log;
 /**
  * 日志服务
  *
- * @author xujs@mamcharge.com
  * @date 2019/12/9 14:10
  **/
 public interface IAuditLogService {

@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * 默认的日志服务
  *
- * @author xujs@mamcharge.com
  * @date 2019/12/9 14:19
  **/
 @Slf4j

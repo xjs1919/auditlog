@@ -1,6 +1,8 @@
 package com.github.xjs.auditlog.anno;
 
 
+import com.github.xjs.auditlog.aop.UserNameExtractor;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -27,6 +29,18 @@ public @interface AuditApi {
      * 是否是登录请求，如果是，则在登录完成以后 去获取用户信息
      * */
     boolean isLogin() default false;
+
+    /**
+     * 如果是登录请求，可以用这个Spel表达式引用变量从参数中提取出来用户名，优先级高于userNameExtractor()<br/>
+     * SDK把所有的请求参数都作为变量放到了StandardEvaluationContext中,变量名是参数名，变量值就是参数值<br/>
+     * 参考：<a href="https://docs.spring.io/spring/docs/5.0.0.M5/spring-framework-reference/html/expressions.html#expressions-ref-variables">Spel官网</a><br/>
+     * */
+    String userNameSpel() default "";
+
+    /**
+     * 如果是登录请求，可以用这个方法提取出来登录的用户名，因为没法获取登录的用户信息<br/>
+     * * */
+    Class<? extends UserNameExtractor> userNameExtractor() default UserNameExtractor.class;
 
     /**
      * 是否记录请求参数，默认记录

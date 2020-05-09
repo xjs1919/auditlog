@@ -8,8 +8,6 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * 用户服务
- *
- * @author xujs@mamcharge.com
  * @date 2019/12/4 16:50
  **/
 public interface IAuditUserService {
@@ -20,5 +18,4 @@ public interface IAuditUserService {
      * @param request
      * */
     AuditUserInfo getUserInfo(HttpServletRequest request);
-
 }

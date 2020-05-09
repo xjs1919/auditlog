@@ -13,7 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 
 /**
  * WebUtil
- * @author xujs@mamcharge.com
+ *
  * @date 2019/12/6 11:14
  **/
 @Slf4j

@@ -15,7 +15,6 @@ import java.util.List;
 /**
  * 行为审计相关配置属性
  *
- * @author xujs@mamcharge.com
  * @date 2019/12/4 16:20
  **/
 @ConfigurationProperties(prefix = "audit")

@@ -5,7 +5,6 @@
 package com.github.xjs.auditlog.cache;
 /**
  * 缓存服务
- * @author xujs@mamcharge.com
  * @date 2019/12/6 10:27
  **/
 public interface IAuditCacheService {

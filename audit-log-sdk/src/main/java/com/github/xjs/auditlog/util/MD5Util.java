@@ -10,7 +10,6 @@ import org.springframework.util.StringUtils;
 /**
  * MD5 帮助类
  *
- * @author xujs@mamcharge.com
  * @date 2019/12/5 15:16
  **/
 public class MD5Util {

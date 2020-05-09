@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * 默认的缓存服务，使用Guava实现的本机内存缓存
  *
- * @author xujs@mamcharge.com
  * @date 2019/12/17 9:44
  **/
 public class DefaultAuditCacheService implements IAuditCacheService {

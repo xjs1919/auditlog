@@ -28,7 +28,6 @@ import org.springframework.web.client.RestTemplate;
 /**
  *  配置类
  *
- * @author xujs@mamcharge.com
  * @date 2019/12/4 16:19
  **/
 @Slf4j

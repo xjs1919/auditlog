@@ -1,14 +1,13 @@
 package com.github.xjs.auditlog.aop;
 
 
-import com.github.xjs.auditlog.config.ActionAuditProperties;
-import com.github.xjs.auditlog.log.IAuditLogService;
 import com.github.xjs.auditlog.anno.AuditApi;
 import com.github.xjs.auditlog.anno.AuditModel;
+import com.github.xjs.auditlog.config.ActionAuditProperties;
 import com.github.xjs.auditlog.log.AuditLog;
+import com.github.xjs.auditlog.log.IAuditLogService;
 import com.github.xjs.auditlog.user.AuditUserInfo;
 import com.github.xjs.auditlog.user.IAuditUserService;
-import com.github.xjs.auditlog.util.LogUtil;
 import com.github.xjs.auditlog.util.StringUtil;
 import com.github.xjs.auditlog.util.ThreadPoolUtil;
 import com.github.xjs.auditlog.util.WebUtil;
@@ -28,8 +27,14 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.expression.EvaluationContext;
+import org.springframework.expression.ExpressionParser;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.ui.Model;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
@@ -102,9 +107,17 @@ public class AuditAspect implements ApplicationContextAware {
         String clientIp = WebUtil.getRemoteIP(httpRequest);
         long createAt = System.currentTimeMillis();
         AuditUserInfo userInfo = null;
+        //获取所有的参数名和参数的值,参数值会copy一份，防止controller内部会对参数做修改
+        List<ParamNameValue> paramNameValues = getAllParamNameValues(method, args, auditApi.ignoreParamClasses());
         //说明是登录接口
         if(auditApi.isLogin()){
-            //用户信息在方法执行完成以后填入
+            //只记录登录的用户名, 这里也可以通过用户名再调用接口去获取用户信息, 但是如果用户名是错误的就无法获取用户信息
+            String userName = extractUserName(auditApi, args, paramNameValues);
+            if(StringUtils.isEmpty(userName)){
+                log.error("登录接口没有设置userNameExtractor，无法获取用户名");
+            }else{
+                userInfo = new AuditUserInfo(null, userName, null);
+            }
         }else{
             // 获取登录的用户
             userInfo = auditUserService.getUserInfo(httpRequest);
@@ -113,9 +126,6 @@ public class AuditAspect implements ApplicationContextAware {
                 return joinPoint.proceed(args);
             }
         }
-        // 执行Controller方法
-        Object argsCopy[] = copyArgs(args, basePackages);
-        List<ParamNameValue> paramNameValues = getAllParamNameValues(method, argsCopy);
         Object responseResult = null;
         boolean success = true;
         int costMills = 0;
@@ -130,10 +140,6 @@ public class AuditAspect implements ApplicationContextAware {
             success = false;
             throw e;
         }finally{
-            if(auditApi.isLogin() && success){
-                //回填用户信息
-                userInfo = auditUserService.getUserInfo(httpRequest);
-            }
             final AuditLog auditLog = new AuditLog();
             auditLog.setAppKey(properties.getAppKey());
             auditLog.setUserId(userInfo==null?null:userInfo.getUserId());
@@ -164,6 +170,62 @@ public class AuditAspect implements ApplicationContextAware {
     }
 
     /**
+     * 从请求参数中提取出登录的用户名
+     *
+     * */
+    private String extractUserName(AuditApi auditApi, Object[] args, List<ParamNameValue> paramNameValues) {
+        String userName = null;
+        if(StringUtil.isEmpty(userName)){
+            String userNameSpel = auditApi.userNameSpel();
+            userName = extractUserNameBySpel(userNameSpel, paramNameValues);
+        }
+        if(StringUtil.isEmpty(userName)){
+            Class<? extends UserNameExtractor>  userNameExtractorClass = auditApi.userNameExtractor();
+            userName = extractUserNameByClass(userNameExtractorClass, args);
+        }
+        return userName;
+    }
+
+    /**
+     * 使用Spel从请求参数中提取出登录的用户名
+     *
+     * */
+    private String extractUserNameBySpel(String userNameSpel, List<ParamNameValue> paramNameValues) {
+        if(StringUtil.isEmpty(userNameSpel) || CollectionUtils.isEmpty(paramNameValues)){
+            return null;
+        }
+        try{
+            EvaluationContext ctx = new StandardEvaluationContext();
+            for(ParamNameValue paramNameValue : paramNameValues){
+                ctx.setVariable(paramNameValue.getParamName(), paramNameValue.getParamValue());
+            }
+            ExpressionParser parser = new SpelExpressionParser();
+            return parser.parseExpression(userNameSpel).getValue(ctx, String.class);
+        }catch(Exception e){
+            log.error("Spel表达式：{}错误", userNameSpel);
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * 使用回调从请求参数中提取出登录的用户名
+     *
+     * */
+    private String extractUserNameByClass(Class<? extends UserNameExtractor> userNameExtractorClass, Object[] args) {
+        if(userNameExtractorClass == null){
+            return null;
+        }
+        try{
+            UserNameExtractor userNameExtractor =  userNameExtractorClass.newInstance();
+            return userNameExtractor.extractUserName(args);
+        }catch(Exception e){
+            log.error(e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
      * 判断是否启用audit，方法的优先级高与类的优先级
      *
      * */
@@ -180,42 +242,37 @@ public class AuditAspect implements ApplicationContextAware {
             throw new IllegalArgumentException("impossible");
         }
     }
-
     /**
      * 复制一份请求参数，防止controller方法内部会修改参数
      * */
-    private Object[] copyArgs(Object[] args, List<String> basePackages) {
-        if(args == null || args.length <= 0){
-            return args;
+    private Object copyArg(Object arg, Class[] ignoreClasses) {
+        if(arg == null){
+            return arg;
         }
-        Object[] result = new Object[args.length];
-        for(int i=0; i<args.length; i++){
-            Object arg = args[i];
-            Object argCopy = arg;
-            Class argClass = arg.getClass();
-            if(Collection.class.isAssignableFrom(argClass)){
-                Collection copy = (Collection)BeanUtils.instantiateClass(argClass);
-                Collection origin = (Collection)arg;
-                copy.addAll(origin);
-                argCopy = copy;
-            }else if(Map.class.isAssignableFrom(argClass)){
-                Map copy = (Map)BeanUtils.instantiateClass(argClass);
-                Map origin = (Map)arg;
-                copy.putAll(origin);
-                argCopy = copy;
-            }else if(isCandidatePackage(argClass.getPackage().getName(),basePackages)){
-                //说明是项目中自定义的bean
-                Object copy = BeanUtils.instantiateClass(argClass);
-                BeanUtils.copyProperties(arg, copy);
-                argCopy = copy;
-            }
-            result[i] = argCopy;
+        Object argCopy = arg;
+        Class argClass = arg.getClass();
+        if(Collection.class.isAssignableFrom(argClass)){
+            Collection copy = (Collection) BeanUtils.instantiateClass(argClass);
+            Collection origin = (Collection)arg;
+            copy.addAll(origin);
+            argCopy = copy;
+        }else if(Map.class.isAssignableFrom(argClass)){
+            Map copy = (Map)BeanUtils.instantiateClass(argClass);
+            Map origin = (Map)arg;
+            copy.putAll(origin);
+            argCopy = copy;
+        }else if(isCandidateAuditParam(argClass, ignoreClasses)){
+            Object copy = BeanUtils.instantiateClass(argClass);
+            BeanUtils.copyProperties(arg, copy);
+            argCopy = copy;
         }
-        return result;
+        return argCopy;
     }
 
-
-    private List<ParamNameValue> getAllParamNameValues(Method method, Object[] arguments){
+    /**
+     * 把请求参数按照名值对重新组织，value会copy一份
+     * */
+    private List<ParamNameValue> getAllParamNameValues(Method method, Object[] arguments, Class[] ignoreClasses){
         DefaultParameterNameDiscoverer dpnd = new DefaultParameterNameDiscoverer();
         String[] parameterNames = dpnd.getParameterNames(method);
         List<ParamNameValue> pnvs = new ArrayList<>(arguments.length);
@@ -223,7 +280,7 @@ public class AuditAspect implements ApplicationContextAware {
             String parameterName = parameterNames[i];
             Object parameterValue = arguments[i];
             Class<?> parameterClass = parameterValue.getClass();
-            pnvs.add(new ParamNameValue(parameterName, parameterValue, parameterClass.getName()));
+            pnvs.add(new ParamNameValue(parameterName, copyArg(parameterValue, ignoreClasses), parameterClass.getName()));
         }
         return pnvs;
     }

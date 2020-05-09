@@ -10,7 +10,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * @author xujs@mamcharge.com
  * @date 2019/12/5 9:17
  **/
 public class ThreadPoolUtil {

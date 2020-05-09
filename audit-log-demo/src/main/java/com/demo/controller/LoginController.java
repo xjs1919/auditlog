@@ -8,6 +8,7 @@ import com.demo.vo.CodeMsg;
 import com.demo.vo.ResVo;
 import com.github.xjs.auditlog.anno.AuditApi;
 import com.github.xjs.auditlog.anno.AuditModel;
+import com.github.xjs.auditlog.aop.UserNameExtractor;
 import com.github.xjs.auditlog.user.AuditUserInfo;
 import com.github.xjs.auditlog.util.HttpUtil;
 import com.github.xjs.auditlog.util.UUIDUtil;
@@ -32,7 +33,15 @@ public class LoginController {
     public static final String TOKEN_NAME = "token";
     public static ConcurrentHashMap<String, AuditUserInfo> users = new ConcurrentHashMap<String, AuditUserInfo>();
 
-    @AuditApi(desc="用户登录",isLogin = true, isLogResponse = true)
+    public static class LoginUserNameExtractor implements UserNameExtractor {
+        @Override
+        public String extractUserName(Object[] args){
+            LoginVo loginVo = (LoginVo)args[0];
+            return loginVo.getUsername();
+        }
+    }
+
+    @AuditApi(desc="用户登录", isLogin = true, userNameSpel = "#vo.username", userNameExtractor = LoginUserNameExtractor.class, isLogResponse = true)
     @PostMapping("/login")
     public ResVo login(@RequestBody LoginVo vo, HttpServletResponse response){
         String usr = vo.getUsername();

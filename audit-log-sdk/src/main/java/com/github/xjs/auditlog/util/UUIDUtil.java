@@ -9,7 +9,6 @@ import java.util.UUID;
 /**
  * UUID帮助类
  *
- * @author xujs@mamcharge.com
  * @date 2019/12/6 9:36
  **/
 public class UUIDUtil {

@@ -9,7 +9,6 @@ import org.springframework.util.StringUtils;
 /**
  * api签名帮助类
  *
- * @author xujs@mamcharge.com
  * @date 2019/12/5 15:32
  **/
 public class ApiSignUtil {

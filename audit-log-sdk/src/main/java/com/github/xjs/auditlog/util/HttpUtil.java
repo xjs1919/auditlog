@@ -3,6 +3,7 @@ package com.github.xjs.auditlog.util;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.tomcat.util.ExceptionUtils;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -11,7 +12,6 @@ import org.springframework.web.client.RestTemplate;
 /**
  * Http接口帮助类
  *
- * @author xujs@mamcharge.com
  * @date 2019/12/6 9:54
  **/
 @Slf4j
@@ -26,10 +26,10 @@ public class HttpUtil {
      * @return 响应内容的data部分
      *  */
     public static <T> T postJson(RestTemplate restTemplate, String url, Object reqParamBean, Class<T> resDataClazz){
+        String params = "";
         try{
             HttpHeaders headers = new HttpHeaders();
             headers.add("Content-Type", "application/json");
-            String params = "";
             if(reqParamBean instanceof  String){
                 params = (String)reqParamBean;
             }else if(reqParamBean instanceof JSONObject){
@@ -56,7 +56,7 @@ public class HttpUtil {
                 }
             }
         }catch(Exception e){
-            log.error("调用接口{}异常:{}", url, e);
+            log.error("调用接口：{}异常，参数:{}，异常信息：{}", url, params, e);
             return null;
         }
     }
