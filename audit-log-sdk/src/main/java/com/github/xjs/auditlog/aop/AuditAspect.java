@@ -216,6 +216,9 @@ public class AuditAspect implements ApplicationContextAware {
         if(userNameExtractorClass == null){
             return null;
         }
+        if(userNameExtractorClass == UserNameExtractor.class){
+            return null;
+        }
         try{
             UserNameExtractor userNameExtractor =  userNameExtractorClass.newInstance();
             return userNameExtractor.extractUserName(args);

@@ -38,7 +38,7 @@ public @interface AuditApi {
     String userNameSpel() default "";
 
     /**
-     * 如果是登录请求，可以用这个方法提取出来登录的用户名，因为没法获取登录的用户信息<br/>
+     * 如果是登录请求，可以用这个方法提取出来登录的用户名<br/>
      * * */
     Class<? extends UserNameExtractor> userNameExtractor() default UserNameExtractor.class;
 

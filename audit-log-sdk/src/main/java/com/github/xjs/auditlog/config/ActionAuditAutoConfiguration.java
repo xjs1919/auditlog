@@ -5,8 +5,6 @@
 package com.github.xjs.auditlog.config;
 
 import com.github.xjs.auditlog.aop.AuditAspect;
-import com.github.xjs.auditlog.cache.DefaultAuditCacheService;
-import com.github.xjs.auditlog.cache.IAuditCacheService;
 import com.github.xjs.auditlog.log.DefaultAuditLogService;
 import com.github.xjs.auditlog.log.HttpAuditLogService;
 import com.github.xjs.auditlog.log.IAuditLogService;
@@ -44,15 +42,6 @@ public class ActionAuditAutoConfiguration{
     public ActionAuditAutoConfiguration(ActionAuditProperties properties, IAuditUserService auditUserService){
         this.properties = properties;
         this.auditUserService = auditUserService;
-    }
-
-    /**
-     * 缓存服务
-     * */
-    @Bean
-    @ConditionalOnMissingBean(IAuditCacheService.class)
-    public IAuditCacheService auditCacheService(){
-        return new DefaultAuditCacheService();
     }
 
     /**
