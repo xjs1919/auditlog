@@ -1,6 +1,7 @@
 package com.github.xjs.auditlog.aop;
 
 
+import com.alibaba.fastjson.JSON;
 import com.github.xjs.auditlog.anno.AuditApi;
 import com.github.xjs.auditlog.anno.AuditModel;
 import com.github.xjs.auditlog.config.ActionAuditProperties;
@@ -92,15 +93,16 @@ public class AuditAspect implements ApplicationContextAware {
         if(!isCandidateController){
             return joinPoint.proceed(args);
         }
+        HttpServletRequest httpRequest = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
         //拿到类和方法上的注解
         AuditModel auditModel = AnnotatedElementUtils.getMergedAnnotation(controller.getClass(), AuditModel.class);
         AuditApi auditApi = AnnotatedElementUtils.getMergedAnnotation(method, AuditApi.class);
         //判断是否开启
-        boolean enable = isAuditEnable(auditModel, auditApi);
+        boolean isGet = httpRequest.getMethod().toUpperCase().equals("GET");
+        boolean enable = isAuditEnable(auditModel, auditApi, isGet);
         if(!enable){
             return joinPoint.proceed(args);
         }
-        HttpServletRequest httpRequest = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
         auditModel = (auditModel==null?this.defaultAuditMolde:auditModel);
         auditApi = (auditApi==null?this.defaultAuditApi :auditApi);
         String uri = httpRequest.getRequestURI();
@@ -108,7 +110,7 @@ public class AuditAspect implements ApplicationContextAware {
         long createAt = System.currentTimeMillis();
         AuditUserInfo userInfo = null;
         //获取所有的参数名和参数的值,参数值会copy一份，防止controller内部会对参数做修改
-        List<ParamNameValue> paramNameValues = getAllParamNameValues(method, args, auditApi.ignoreParamClasses());
+        List<ParamNameValue> paramNameValues = getAllParamNameValues(method, args, auditApi.ignoreParamClasses(), basePackages);
         //说明是登录接口
         if(auditApi.isLogin()){
             //只记录登录的用户名, 这里也可以通过用户名再调用接口去获取用户信息, 但是如果用户名是错误的就无法获取用户信息
@@ -232,11 +234,12 @@ public class AuditAspect implements ApplicationContextAware {
      * 判断是否启用audit，方法的优先级高与类的优先级
      *
      * */
-    private boolean isAuditEnable(AuditModel auditModel, AuditApi auditApi){
+    private boolean isAuditEnable(AuditModel auditModel, AuditApi auditApi, boolean isGet){
         if(auditModel == null && auditApi == null){
             return true;
         }else if(auditModel != null && auditApi == null){
-            return auditModel.enable();
+            //默认不记录get
+            return auditModel.enable() && !isGet;
         }else if(auditModel == null && auditApi != null){
             return auditApi.enable();
         }else if(auditModel != null && auditApi != null){
@@ -248,7 +251,7 @@ public class AuditAspect implements ApplicationContextAware {
     /**
      * 复制一份请求参数，防止controller方法内部会修改参数
      * */
-    private Object copyArg(Object arg, Class[] ignoreClasses) {
+    private Object copyArg(Object arg, Class[] ignoreClasses, List<String> basePackages) {
         if(arg == null){
             return arg;
         }
@@ -264,9 +267,9 @@ public class AuditAspect implements ApplicationContextAware {
             Map origin = (Map)arg;
             copy.putAll(origin);
             argCopy = copy;
-        }else if(isCandidateAuditParam(argClass, ignoreClasses)){
-            Object copy = BeanUtils.instantiateClass(argClass);
-            BeanUtils.copyProperties(arg, copy);
+        }else if(isCandidateAuditParam(argClass, ignoreClasses) && isCandidatePackage(argClass.getPackage().getName(), basePackages)){
+            String json = JSON.toJSONString(arg);
+            Object copy = JSON.toJavaObject(JSON.parseObject(json), argClass);
             argCopy = copy;
         }
         return argCopy;
@@ -275,7 +278,7 @@ public class AuditAspect implements ApplicationContextAware {
     /**
      * 把请求参数按照名值对重新组织，value会copy一份
      * */
-    private List<ParamNameValue> getAllParamNameValues(Method method, Object[] arguments, Class[] ignoreClasses){
+    private List<ParamNameValue> getAllParamNameValues(Method method, Object[] arguments, Class[] ignoreClasses, List<String> basePackages){
         DefaultParameterNameDiscoverer dpnd = new DefaultParameterNameDiscoverer();
         String[] parameterNames = dpnd.getParameterNames(method);
         List<ParamNameValue> pnvs = new ArrayList<>(arguments.length);
@@ -283,7 +286,7 @@ public class AuditAspect implements ApplicationContextAware {
             String parameterName = parameterNames[i];
             Object parameterValue = arguments[i];
             Class<?> parameterClass = parameterValue.getClass();
-            pnvs.add(new ParamNameValue(parameterName, copyArg(parameterValue, ignoreClasses), parameterClass.getName()));
+            pnvs.add(new ParamNameValue(parameterName, copyArg(parameterValue, ignoreClasses, basePackages), parameterClass.getName()));
         }
         return pnvs;
     }
