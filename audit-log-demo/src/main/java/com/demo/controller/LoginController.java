@@ -10,17 +10,13 @@ import com.github.xjs.auditlog.anno.AuditApi;
 import com.github.xjs.auditlog.anno.AuditModel;
 import com.github.xjs.auditlog.aop.UserNameExtractor;
 import com.github.xjs.auditlog.user.AuditUserInfo;
-import com.github.xjs.auditlog.util.HttpUtil;
 import com.github.xjs.auditlog.util.UUIDUtil;
 import com.github.xjs.auditlog.util.WebUtil;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
 import javax.servlet.http.HttpServletResponse;
 import java.util.concurrent.ConcurrentHashMap;

@@ -1,6 +1,7 @@
 package com.github.xjs.auditlog.anno;
 
 
+import com.github.xjs.auditlog.aop.RequestParamExtractor;
 import com.github.xjs.auditlog.aop.UserNameExtractor;
 
 import java.lang.annotation.ElementType;
@@ -50,11 +51,16 @@ public @interface AuditApi {
     /**
      * 是否记录响应信息，默认不记录
      * */
-    boolean isLogResponse() default false;
+    boolean isLogResponse() default true;
 
     /**
      * 忽略的请求参数，当isLogRequestParams开启时有效,默认已经忽略了HttpServletRequest、HttpServletResponse、Model、Multipart、Part
      * */
     Class[] ignoreParamClasses() default {};
+
+    /**
+     * 如果方法签名上无法提取请求参数（比如：文件上传的时候），可以用这个来提取<br/>
+     * * */
+    Class<? extends RequestParamExtractor> requestParamExtractor() default RequestParamExtractor.class;
 
 }

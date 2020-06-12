@@ -109,7 +109,7 @@ public class AuditAspect implements ApplicationContextAware {
         String clientIp = WebUtil.getRemoteIP(httpRequest);
         long createAt = System.currentTimeMillis();
         AuditUserInfo userInfo = null;
-        //获取所有的参数名和参数的值,参数值会copy一份，防止controller内部会对参数做修改
+        //获取所有的参数名和参数的值, 参数值会copy一份，防止controller内部会对参数做修改
         List<ParamNameValue> paramNameValues = getAllParamNameValues(method, args, auditApi.ignoreParamClasses(), basePackages);
         //说明是登录接口
         if(auditApi.isLogin()){
@@ -158,7 +158,9 @@ public class AuditAspect implements ApplicationContextAware {
             auditLog.setExtList(AuditContext.getDiffList());
             AuditContext.clear();
             if(auditApi.isLogRequestParams()){
-                auditLog.setParams(getAuditRequestParams(paramNameValues, auditApi.ignoreParamClasses()));
+                Map<String, Object> paramSignature = getAuditRequestParams(paramNameValues, auditApi.ignoreParamClasses());
+                Map<String, Object> paramExtractor = getAuditRequestParams(paramNameValues, auditApi.requestParamExtractor());
+                auditLog.setParams(CollectionUtils.isEmpty(paramExtractor)?paramSignature:paramExtractor);
             }
             if(auditApi.isLogResponse()){
                 auditLog.setResponse(responseResult);
@@ -312,7 +314,7 @@ public class AuditAspect implements ApplicationContextAware {
     }
 
     /**
-     * 获取要审计的请求参数
+     * 获取要审计的请求参数，使用方法签名上的参数
      * */
     private Map<String, Object> getAuditRequestParams(List<ParamNameValue> pnvs, Class[] ignoreParamClasses){
         Map<String, Object> result = new HashMap<>(pnvs.size());
@@ -325,6 +327,27 @@ public class AuditAspect implements ApplicationContextAware {
             result.put(pnv.getParamName(), pnv.getParamValue());
         }
         return result;
+    }
+
+    /**
+     * 获取要审计的请求参数,使用RequestParamExtractor
+     * */
+    private Map<String, Object> getAuditRequestParams(List<ParamNameValue> pnvs, Class<? extends RequestParamExtractor> extractorClass){
+        if(CollectionUtils.isEmpty(pnvs) || extractorClass == RequestParamExtractor.class){
+            return null;
+        }
+        try{
+            Object[] args = new Object[pnvs.size()];
+            for(int i=0; i<pnvs.size(); i++){
+                ParamNameValue pnv = pnvs.get(i);
+                args[i] = pnv.getParamValue();
+            }
+            RequestParamExtractor extractor = extractorClass.newInstance();
+            return extractor.extractRequestParams(args);
+        }catch(Exception e){
+            log.error(e.getMessage(), e);
+            return null;
+        }
     }
 
     /**
