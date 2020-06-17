@@ -43,6 +43,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.*;
 
@@ -72,13 +73,12 @@ public class AuditAspect implements ApplicationContextAware {
         this.basePackages = AutoConfigurationPackages.get(this.applicationContext);
     }
 
-    /**AOP*/
-    @Pointcut("@annotation(org.springframework.web.bind.annotation.RequestMapping) || " +
-            "@annotation(org.springframework.web.bind.annotation.GetMapping) ||" +
-            "@annotation(org.springframework.web.bind.annotation.PostMapping) ||" +
-            "@annotation(org.springframework.web.bind.annotation.PutMapping) ||" +
-            "@annotation(org.springframework.web.bind.annotation.DeleteMapping) ||" +
-            "@annotation(org.springframework.web.bind.annotation.PatchMapping)")
+    /**AOP，参考：
+    //https://stackoverflow.com/questions/52992365/spring-creates-proxy-for-wrong-classes-when-using-aop-class-level-annotation/53452483
+    //https://blog.csdn.net/qq_23167527/article/details/78623639
+     */
+    @Pointcut("execution(* (@com.github.xjs.auditlog.anno.AuditModel *).*(..)) ||" +
+            "execution(@com.github.xjs.auditlog.anno.AuditApi * *(..))")
     public void requestMappingCut() {
     }
 
@@ -86,18 +86,18 @@ public class AuditAspect implements ApplicationContextAware {
     public Object aroundRequestMapping(ProceedingJoinPoint joinPoint) throws Throwable {
         Object args[] = joinPoint.getArgs();
         Object controller = joinPoint.getTarget();
-        MethodSignature methodSignature = (MethodSignature)(joinPoint.getSignature());
-        Method method = methodSignature.getMethod();
-        //判断是否需要拦截的controller
-        boolean isCandidateController = isCandidateClass(controller.getClass(), basePackages);
-        if(!isCandidateController){
-            return joinPoint.proceed(args);
-        }
-        HttpServletRequest httpRequest = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        Method method = ((MethodSignature)(joinPoint.getSignature())).getMethod();
         //拿到类和方法上的注解
-        AuditModel auditModel = AnnotatedElementUtils.getMergedAnnotation(controller.getClass(), AuditModel.class);
-        AuditApi auditApi = AnnotatedElementUtils.getMergedAnnotation(method, AuditApi.class);
+        AuditModel auditModel = controller.getClass().getAnnotationsByType(AuditModel.class)[0];
+        AuditApi auditApi = null;
+        for (Annotation annotation : method.getDeclaredAnnotations()) {
+            if (annotation instanceof AuditApi) {
+                auditApi = (AuditApi) annotation;
+                break;
+            }
+        }
         //判断是否开启
+        HttpServletRequest httpRequest = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
         boolean isGet = httpRequest.getMethod().toUpperCase().equals("GET");
         boolean enable = isAuditEnable(auditModel, auditApi, isGet);
         if(!enable){
@@ -291,14 +291,6 @@ public class AuditAspect implements ApplicationContextAware {
             pnvs.add(new ParamNameValue(parameterName, copyArg(parameterValue, ignoreClasses, basePackages), parameterClass.getName()));
         }
         return pnvs;
-    }
-
-    /**
-     * 判断一个类是否在basePackage下面
-     * */
-    private boolean isCandidateClass(Class clazz, List<String> basePackages) {
-        String packageName = clazz.getPackage().getName();
-        return isCandidatePackage(packageName, basePackages);
     }
 
     /**
