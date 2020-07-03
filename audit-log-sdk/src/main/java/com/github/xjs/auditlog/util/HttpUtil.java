@@ -29,7 +29,7 @@ public class HttpUtil {
         String params = "";
         try{
             HttpHeaders headers = new HttpHeaders();
-            headers.add("Content-Type", "application/json");
+            headers.add("Content-Type", "application/json;charset=UTF-8");
             if(reqParamBean instanceof  String){
                 params = (String)reqParamBean;
             }else if(reqParamBean instanceof JSONObject){
